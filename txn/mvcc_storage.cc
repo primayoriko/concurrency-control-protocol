@@ -15,14 +15,14 @@ void MVCCStorage::InitStorage() {
 // Free memory.
 MVCCStorage::~MVCCStorage() {
   for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_.begin();
-       it != mvcc_data_.end(); ++it) {
+      it != mvcc_data_.end(); ++it) {
     delete it->second;          
   }
   
   mvcc_data_.clear();
   
   for (unordered_map<Key, Mutex*>::iterator it = mutexs_.begin();
-       it != mutexs_.end(); ++it) {
+        it != mutexs_.end(); ++it) {
     delete it->second;          
   }
   
@@ -47,8 +47,21 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
   
   // Hint: Iterate the version_lists and return the verion whose write timestamp
   // (version_id) is the largest write timestamp less than or equal to txn_unique_id.
-  
-  return true;
+  if (mvcc_data_.count(key)) {
+    deque<Version*>* data = mvcc_data_[key];
+
+    for (deque<Version*>::iterator it = data->begin();
+          it != data->end(); ++it) {
+      // Save each read result iff record exists in storage.
+      if(it->version_id_ <= txn_unique_id){
+        *result = it->value_;
+      }
+    }
+
+    return true;
+  } else {
+    return false;
+  }
 }
 
 
@@ -64,7 +77,8 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
   // write_set. Return true if this key passes the check, return false if not. 
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
-  
+  data_[key] = value;
+  timestamps_[key] = GetTime();
   
   return true;
 }
