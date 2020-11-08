@@ -359,6 +359,37 @@ void TxnProcessor::MVCCExecuteTxN(Txn* txn){
   // Execute txn's program logic.
   txn->Run();
 
+  bool flag = true;
+
+  // Acquire all locks for keys in the write_set_
+  // Call MVCCStorage::CheckWrite method to check all keys in the write_set_
+  // If (each key passed the check)
+  //   Apply the writes
+  //   Release all locks for keys in the write_set_
+  // else if (at least one key failed the check)
+  //   Release all locks for keys in the write_set_
+  //   Cleanup txn
+  //   Completely restart the transaction.
+
+  if(!flag){
+    finished->reads_.empty();
+    finished->writes_.empty();
+    finished->status_ = INCOMPLETE;
+
+    mutex_.Lock();
+    txn->unique_id_ = next_unique_id_;
+    next_unique_id_++;
+    txn_requests_.Push(txn);
+    mutex_.Unlock(); 
+  } else {
+    if (finished->Status() == COMPLETED_A) {
+      finished->status_ = ABORTED;
+    } else{
+      ApplyWrites(finished);
+      txn->status_ = COMMITTED;
+    }
+  }
+
   // Hand the txn back to the RunScheduler thread.
   completed_txns_.Push(txn);
 }
@@ -388,28 +419,9 @@ void TxnProcessor::RunMVCCScheduler() {
     // Validate completed transactions, serially
     Txn *finished;
     while (completed_txns_.Pop(&finished)) {
-      if (finished->Status() == COMPLETED_A) {
-        finished->status_ = ABORTED;
-      } else {
-        bool valid = OCCValidateTransaction(*finished);
-        if (!valid) {
-          // Cleanup and restart
-          finished->reads_.empty();
-          finished->writes_.empty();
-          finished->status_ = INCOMPLETE;
-
-          mutex_.Lock();
-          txn->unique_id_ = next_unique_id_;
-          next_unique_id_++;
-          txn_requests_.Push(finished);
-          mutex_.Unlock();
-        } else {
-          // Commit the transaction
-          ApplyWrites(finished);
-          txn->status_ = COMMITTED;
-        }
-      }
-
+      // if (finished->Status() == COMPLETED_A) {
+      //   finished->status_ = ABORTED;
+      // }
       txn_results_.Push(finished);
     }
   }

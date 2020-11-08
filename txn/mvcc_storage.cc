@@ -77,8 +77,7 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
   // write_set. Return true if this key passes the check, return false if not. 
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
-  data_[key] = value;
-  timestamps_[key] = GetTime();
+
   
   return true;
 }
@@ -93,6 +92,9 @@ void MVCCStorage::Write(Key key, Value value, int txn_unique_id) {
   // into the version_lists. Note that InitStorage() also calls this method to init storage. 
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
+  
+  // mvcc_data_[key] = value;
+  // timestamps_[key] = GetTime();
 }
 
 
