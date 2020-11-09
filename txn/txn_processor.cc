@@ -331,7 +331,80 @@ void TxnProcessor::RunOCCParallelScheduler() {
   //
   // [For now, run serial scheduler in order to make it through the test
   // suite]
+
   RunSerialScheduler();
+}
+
+void ExecuteTxnParallel(Txn *txn) {
+  // Record start time
+  //   Perform "read phase" of transaction:
+  //      Read all relevant data from storage
+  //      Execute the transaction logic (i.e. call Run() on the transaction)
+  //   <Start of critical section>
+  //   Make a copy of the active set save it
+  //   Add this transaction to the active set
+  //   <End of critical section>
+  //   Do validation phase:    
+  //     for (each record whose key appears in the txn's read and write sets) {
+  //       if (the record was last updated AFTER this transaction's start time) {
+  //         Validation fails!
+  //       }
+  //     }
+
+  //     for (each txn t in the txn's copy of the active set) {
+  //       if (txn's write set intersects with t's read or write sets) {
+  //         Validation fails!
+  //       }
+  //       if (txn's read set intersects with t's write sets) {
+  //         Validation fails!
+  //       }
+  //     }
+
+  //     if valid :
+  //       Apply writes;
+  //       Remove this transaction from the active set
+  //       Mark transaction as committed;
+  //     else if validation failed:
+  //       Remove this transaction from the active set
+  //       Cleanup txn
+  //       Completely restart the transaction.
+        
+  //   cleanup txn:
+  //      txn->reads_.empty();
+  //      txn->writes_.empty();
+  //      txn->status_ = INCOMPLETE;    
+
+  //   Restart txn:
+  //     mutex_.Lock();
+  //     txn->unique_id_ = next_unique_id_;
+  //     next_unique_id_++;
+  //     txn_requests_.Push(txn);
+  //     mutex_.Unlock();    
+  txn->occ_start_time_ = GetTime();
+  // perform read phase
+  for (set<Key>::iterator it = txn->readset_.begin();
+        it != txn->readset_.end(); ++it) {
+    // Save each read result iff record exists in storage.
+    Value result;
+    if (storage_->Read(*it, &result))
+      txn->reads_[*it] = result;
+  }
+  //   <Start of critical section>
+  active_set_mutex_.lock();
+
+  int i = 0;
+    while (i++ < N && completed_txns_.Pop(&txn)) {
+      AtomicSet<Txn*> active_set_copy = active_set_;
+      active_set_.insert(txn);
+      tp_.RunTask(new Method<TxnProcessor, void, Txn*, set<Txn*>> (
+            this,
+            &TxnProcessor::ValidateTxn,
+            txn,
+            active_set_copy));
+    }
+  
+  //   <End of critical section>
+  active_set_mutex_.unlock();
 }
 
 void TxnProcessor::MVCCExecuteTxN(Txn* txn){
