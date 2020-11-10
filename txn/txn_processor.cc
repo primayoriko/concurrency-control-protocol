@@ -278,11 +278,12 @@ bool TxnProcessor::OCCValidateTransaction(const Txn &txn) const {
 }
 
 void TxnProcessor::RunOCCScheduler() {
+  Txn *txn;
   // Fetch transaction requests, and immediately begin executing them.
   while (tp_.Active()) {
-    Txn *txn;
+    
     if (txn_requests_.Pop(&txn)) {
-
+      txn->occ_start_time_ = GetTime();
       // Start txn running in its own thread.
       tp_.RunTask(new Method<TxnProcessor, void, Txn*>(
                   this,
@@ -336,137 +337,84 @@ void TxnProcessor::RunOCCParallelScheduler() {
 }
 
 void ExecuteTxnParallel(Txn *txn) {
-  // Record start time
-  //   Perform "read phase" of transaction:
-  //      Read all relevant data from storage
-  //      Execute the transaction logic (i.e. call Run() on the transaction)
-  //   <Start of critical section>
-  //   Make a copy of the active set save it
-  //   Add this transaction to the active set
-  //   <End of critical section>
-  //   Do validation phase:    
-  //     for (each record whose key appears in the txn's read and write sets) {
-  //       if (the record was last updated AFTER this transaction's start time) {
-  //         Validation fails!
-  //       }
-  //     }
 
-  //     for (each txn t in the txn's copy of the active set) {
-  //       if (txn's write set intersects with t's read or write sets) {
-  //         Validation fails!
-  //       }
-  //       if (txn's read set intersects with t's write sets) {
-  //         Validation fails!
-  //       }
-  //     }
-
-  //     if valid :
-  //       Apply writes;
-  //       Remove this transaction from the active set
-  //       Mark transaction as committed;
-  //     else if validation failed:
-  //       Remove this transaction from the active set
-  //       Cleanup txn
-  //       Completely restart the transaction.
-        
-  //   cleanup txn:
-  //      txn->reads_.empty();
-  //      txn->writes_.empty();
-  //      txn->status_ = INCOMPLETE;    
-
-  //   Restart txn:
-  //     mutex_.Lock();
-  //     txn->unique_id_ = next_unique_id_;
-  //     next_unique_id_++;
-  //     txn_requests_.Push(txn);
-  //     mutex_.Unlock();    
-  txn->occ_start_time_ = GetTime();
-  // perform read phase
-  for (set<Key>::iterator it = txn->readset_.begin();
-        it != txn->readset_.end(); ++it) {
-    // Save each read result iff record exists in storage.
-    Value result;
-    if (storage_->Read(*it, &result))
-      txn->reads_[*it] = result;
-  }
-  //   <Start of critical section>
-  active_set_mutex_.lock();
-  #define N 2
-  int i = 0;
-    while (i++ < N && completed_txns_.Pop(&txn)) {
-      AtomicSet<Txn*> active_set_copy = active_set_;
-      active_set_.Insert(txn);
-      tp_.RunTask(new Method<TxnProcessor, void, Txn*, AtomicSet<Txn*>> (
-            this,
-            &TxnProcessor::ValidateTxn,
-            txn,
-            active_set_copy));
-    }
+  // txn->occ_start_time_ = GetTime();
+  // // perform read phase
+  // for (set<Key>::iterator it = txn->readset_.begin();
+  //       it != txn->readset_.end(); ++it) {
+  //   // Save each read result iff record exists in storage.
+  //   Value result;
+  //   if (storage_->Read(*it, &result))
+  //     txn->reads_[*it] = result;
+  // }
+  // //   <Start of critical section>
+  // active_set_mutex_.lock();
+  // #define N 2
+  // int i = 0;
+  //   while (i++ < N && completed_txns_.Pop(&txn)) {
+  //     AtomicSet<Txn*> active_set_copy = active_set_;
+  //     active_set_.Insert(txn);
+  //     tp_.RunTask(new Method<TxnProcessor, void, Txn*, AtomicSet<Txn*>> (
+  //           this,
+  //           &TxnProcessor::ValidateTxn,
+  //           txn,
+  //           active_set_copy));
+  //   }
   
-  //   <End of critical section>
-  active_set_mutex_.unlock();
+  // //   <End of critical section>
+  // active_set_mutex_.unlock();
 }
-void TxnProcessor::ValidateTxn(Txn* txn, AtomicSet<Txn*> active_set_copy) {
-  // assign aborted transaction and only accept commited
-  if (txn->Status() == COMPLETED_A) {
-    txn->status_ = ABORTED;
-    validated_txns_.Push(std::make_pair(txn, true));
-    return;
-  } else if (txn->Status() != COMPLETED_C) {
-    DIE("Completed Txn has invalid TxnStatus: " << txn->Status());
-  }
+// void TxnProcessor::ValidateTxn(Txn* txn, AtomicSet<Txn*> active_set_copy) {
+//   // assign aborted transaction and only accept commited
+//   if (txn->Status() == COMPLETED_A) {
+//     txn->status_ = ABORTED;
+//     validated_txns_.Push(std::make_pair(txn, true));
+//     return;
+//   } else if (txn->Status() != COMPLETED_C) {
+//     DIE("Completed Txn has invalid TxnStatus: " << txn->Status());
+//   }
 
-  bool verified = true;
+//   bool verified = true;
 
-  // check for overlap in readset
-  for (set<Key>::iterator it = txn->readset_.begin();
-       it != txn->readset_.end(); ++it) {
-    // if last modified > my start then invalid
-    if (storage_.Timestamp(*it) > txn->occ_start_time_) {
-      verified = false;
-      break;
-    }
-  }
+//   // check for overlap in readset
+//   for (set<Key>::iterator it = txn->readset_.begin();
+//        it != txn->readset_.end(); ++it) {
+//     // if last modified > my start then invalid
+//     if (storage_.Timestamp(*it) > txn->occ_start_time_) {
+//       verified = false;
+//       break;
+//     }
+//   }
 
   // check for overlap in writeset
-  for (set<Key>::iterator it = txn->writeset_.begin();
-       it != txn->writeset_.end(); ++it) {
-    // if last modified > my start then invalid
-    if (storage_.Timestamp(*it) > txn->occ_start_time_) {
-      verified = false;
-      break;
-    }
-  }
+//   for (set<Key>::iterator it = txn->writeset_.begin();
+//        it != txn->writeset_.end(); ++it) {
+//     // if last modified > my start then invalid
+//     if (storage_.Timestamp(*it) > txn->occ_start_time_) {
+//       verified = false;
+//       break;
+//     }
+//   }
 
-  // check if the writeset intersects with the read or write sets
-  // of any concurrently validating txns
-  for (set<Txn*>::iterator it = active_set_copy.begin();
-       it != active_set_copy.end(); ++it) {
-    for (set<Key>::iterator it2 = txn->writeset_.begin();
-        it2 != txn->writeset_.end(); ++it2) {
-      verified = verified && !(*it)->writeset_.count(*it2) &&
-                 !(*it)->readset_.count(*it2);
-      if (!verified) break;
-    }
-  }
+//   // check if the writeset intersects with the read or write sets
+//   // of any concurrently validating txns
+//   for (set<Txn*>::iterator it = active_set_copy.begin();
+//        it != active_set_copy.end(); ++it) {
+//     for (set<Key>::iterator it2 = txn->writeset_.begin();
+//         it2 != txn->writeset_.end(); ++it2) {
+//       verified = verified && !(*it)->writeset_.count(*it2) &&
+//                  !(*it)->readset_.count(*it2);
+//       if (!verified) break;
+//     }
+//   }
 
-  if (verified) ApplyWrites(txn);
-  validated_txns_.Push(std::make_pair(txn, verified));
+//   if (verified) ApplyWrites(txn);
+//   validated_txns_.Push(std::make_pair(txn, verified));
 
-}
+// }
 
-void TxnProcessor::ApplyWrites(Txn* txn) {
-  // Write buffered writes out to storage.
-  for (map<Key, Value>::iterator it = txn->writes_.begin();
-       it != txn->writes_.end(); ++it) {
-    storage_.Write(it->first, it->second);
-  }
 
-  // Set status to committed.
-  txn->status_ = COMMITTED;
-}
-
-void TxnProcessor::MVCCExecuteTxN(Txn* txn){
+void TxnProcessor::MVCCExecuteTxn(Txn* txn){
   // Get the start time
   txn->occ_start_time_ = GetTime();
 
@@ -504,9 +452,9 @@ void TxnProcessor::MVCCExecuteTxN(Txn* txn){
   //   Completely restart the transaction.
 
   if(!flag){
-    finished->reads_.empty();
-    finished->writes_.empty();
-    finished->status_ = INCOMPLETE;
+    txn->reads_.empty();
+    txn->writes_.empty();
+    txn->status_ = INCOMPLETE;
 
     mutex_.Lock();
     txn->unique_id_ = next_unique_id_;
@@ -516,10 +464,10 @@ void TxnProcessor::MVCCExecuteTxN(Txn* txn){
 
     // completed_txns_.Push(txn);
   } else {
-    if (finished->Status() == COMPLETED_A) {
-      finished->status_ = ABORTED;
+    if (txn->Status() == COMPLETED_A) {
+      txn->status_ = ABORTED;
     } else{
-      ApplyWrites(finished);
+      ApplyWrites(txn);
       txn->status_ = COMMITTED;
     }
     txn_results_.Push(txn);
