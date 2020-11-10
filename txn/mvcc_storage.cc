@@ -53,8 +53,9 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
     for (deque<Version*>::iterator it = data->begin();
           it != data->end(); ++it) {
       // Save each read result iff record exists in storage.
-      if(it->version_id_ <= txn_unique_id){
-        *result = it->value_;
+      Version* v = *it;
+      if(v->version_id_ <= txn_unique_id){
+        *result = v->value_;
       }
     }
 
