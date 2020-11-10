@@ -82,6 +82,10 @@ void Benchmark(const vector<LoadGen*>& lg) {
   for (CCMode mode = SERIAL;
       mode <= MVCC;
       mode = static_cast<CCMode>(mode+1)) {
+
+    // Skipping Locking B, OCC-P
+    if(mode == LOCKING || mode == P_OCC) continue;
+    
     // Print out mode name.
     cout << ModeToString(mode) << flush;
 
