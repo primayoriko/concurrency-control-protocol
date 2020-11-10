@@ -50,8 +50,7 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
   if (mvcc_data_.count(key)) {
     deque<Version*>* data = mvcc_data_[key];
 
-    for (deque<Version*>::iterator it = data->begin();
-          it != data->end(); ++it) {
+    for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
       // Save each read result iff record exists in storage.
       Version* v = *it;
       if(v->version_id_ <= txn_unique_id){
@@ -78,9 +77,26 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
   // write_set. Return true if this key passes the check, return false if not. 
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
+  if (mvcc_data_.count(key)) {
+    deque<Version*>* data = mvcc_data_[key];
+    int max_version = -1;
+    Version* vk;
 
-  
-  return true;
+    for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
+      Version* v = *it;
+      if(v->version_id_ <= txn_unique_id){
+        vk = v;
+      }
+    }
+
+    // MVCC Write rule
+    // if RTS(Qk) > Ti, abort
+    // else if WTS(Qk) = Ti, rewrite
+    // else, make new version
+    return (vk->max_read_id_ <= txn_unique_id);
+  } else {
+    return false;
+  }
 }
 
 // MVCC Write, call this method only if CheckWrite return true.
@@ -94,8 +110,7 @@ void MVCCStorage::Write(Key key, Value value, int txn_unique_id) {
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
   
-  // mvcc_data_[key] = value;
-  // timestamps_[key] = GetTime();
+  
 }
 
 
