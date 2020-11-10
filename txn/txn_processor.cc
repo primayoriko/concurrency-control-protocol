@@ -391,12 +391,12 @@ void ExecuteTxnParallel(Txn *txn) {
   }
   //   <Start of critical section>
   active_set_mutex_.lock();
-
+  #define N 2
   int i = 0;
     while (i++ < N && completed_txns_.Pop(&txn)) {
       AtomicSet<Txn*> active_set_copy = active_set_;
-      active_set_.insert(txn);
-      tp_.RunTask(new Method<TxnProcessor, void, Txn*, set<Txn*>> (
+      active_set_.Insert(txn);
+      tp_.RunTask(new Method<TxnProcessor, void, Txn*, AtomicSet<Txn*>> (
             this,
             &TxnProcessor::ValidateTxn,
             txn,
@@ -405,6 +405,65 @@ void ExecuteTxnParallel(Txn *txn) {
   
   //   <End of critical section>
   active_set_mutex_.unlock();
+}
+void TxnProcessor::ValidateTxn(Txn* txn, AtomicSet<Txn*> active_set_copy) {
+  // assign aborted transaction and only accept commited
+  if (txn->Status() == COMPLETED_A) {
+    txn->status_ = ABORTED;
+    validated_txns_.Push(std::make_pair(txn, true));
+    return;
+  } else if (txn->Status() != COMPLETED_C) {
+    DIE("Completed Txn has invalid TxnStatus: " << txn->Status());
+  }
+
+  bool verified = true;
+
+  // check for overlap in readset
+  for (set<Key>::iterator it = txn->readset_.begin();
+       it != txn->readset_.end(); ++it) {
+    // if last modified > my start then invalid
+    if (storage_.Timestamp(*it) > txn->occ_start_time_) {
+      verified = false;
+      break;
+    }
+  }
+
+  // check for overlap in writeset
+  for (set<Key>::iterator it = txn->writeset_.begin();
+       it != txn->writeset_.end(); ++it) {
+    // if last modified > my start then invalid
+    if (storage_.Timestamp(*it) > txn->occ_start_time_) {
+      verified = false;
+      break;
+    }
+  }
+
+  // check if the writeset intersects with the read or write sets
+  // of any concurrently validating txns
+  for (set<Txn*>::iterator it = active_set_copy.begin();
+       it != active_set_copy.end(); ++it) {
+    for (set<Key>::iterator it2 = txn->writeset_.begin();
+        it2 != txn->writeset_.end(); ++it2) {
+      verified = verified && !(*it)->writeset_.count(*it2) &&
+                 !(*it)->readset_.count(*it2);
+      if (!verified) break;
+    }
+  }
+
+  if (verified) ApplyWrites(txn);
+  validated_txns_.Push(std::make_pair(txn, verified));
+
+}
+
+void TxnProcessor::ApplyWrites(Txn* txn) {
+  // Write buffered writes out to storage.
+  for (map<Key, Value>::iterator it = txn->writes_.begin();
+       it != txn->writes_.end(); ++it) {
+    storage_.Write(it->first, it->second);
+  }
+
+  // Set status to committed.
+  txn->status_ = COMMITTED;
 }
 
 void TxnProcessor::MVCCExecuteTxN(Txn* txn){
