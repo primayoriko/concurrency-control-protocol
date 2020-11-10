@@ -381,6 +381,8 @@ void TxnProcessor::MVCCExecuteTxN(Txn* txn){
     next_unique_id_++;
     txn_requests_.Push(txn);
     mutex_.Unlock(); 
+
+    // completed_txns_.Push(txn);
   } else {
     if (finished->Status() == COMPLETED_A) {
       finished->status_ = ABORTED;
@@ -388,10 +390,8 @@ void TxnProcessor::MVCCExecuteTxN(Txn* txn){
       ApplyWrites(finished);
       txn->status_ = COMMITTED;
     }
+    txn_results_.Push(txn);
   }
-
-  // Hand the txn back to the RunScheduler thread.
-  completed_txns_.Push(txn);
 }
 
 void TxnProcessor::RunMVCCScheduler() {
@@ -417,13 +417,13 @@ void TxnProcessor::RunMVCCScheduler() {
     }
 
     // Validate completed transactions, serially
-    Txn *finished;
-    while (completed_txns_.Pop(&finished)) {
-      // if (finished->Status() == COMPLETED_A) {
-      //   finished->status_ = ABORTED;
-      // }
-      txn_results_.Push(finished);
-    }
+    // Txn *finished;
+    // while (completed_txns_.Pop(&finished)) {
+    //   if (finished->Status() == COMPLETED_A) {
+    //     finished->status_ = ABORTED;
+    //   }
+    //   txn_results_.Push(finished);
+    // }
   }
 }
 
