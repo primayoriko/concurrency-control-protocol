@@ -420,8 +420,10 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
         it != txn->readset_.end(); ++it) {
     // Save each read result iff record exists in storage.
     Value result;
+    storage_->Lock(*it);
     if (storage_->Read(*it, &result))
       txn->reads_[*it] = result;
+    storage_->Unlock(*it);
   }
 
   // Also read everything in from writeset.
@@ -429,8 +431,10 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
         it != txn->writeset_.end(); ++it) {
     // Save each read result iff record exists in storage.
     Value result;
+    storage_->Lock(*it);
     if (storage_->Read(*it, &result))
       txn->reads_[*it] = result;
+    storage_->Unlock(*it);
   }
 
   // Execute txn's program logic.
