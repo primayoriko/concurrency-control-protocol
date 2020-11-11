@@ -55,7 +55,7 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
       // Save each read result iff record exists in storage.
       Version* v = *it;
       if(v->version_id_ <= txn_unique_id){
-        *q = v;
+        q = v;
       }
     }
 
