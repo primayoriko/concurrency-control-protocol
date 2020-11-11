@@ -253,9 +253,18 @@ void TxnProcessor::ExecuteTxn(Txn* txn) {
 
 void TxnProcessor::ApplyWrites(Txn* txn) {
   // Write buffered writes out to storage.
-  for (map<Key, Value>::iterator it = txn->writes_.begin();
+  if(mode_ != MVCC){
+    for (map<Key, Value>::iterator it = txn->writes_.begin();
         it != txn->writes_.end(); ++it) {
-    storage_->Write(it->first, it->second, txn->unique_id_);
+      storage_->Lock(*it);
+      storage_->Write(it->first, it->second, txn->unique_id_);
+      storage_->Unlock(*it);
+    }
+  } else {
+    for (map<Key, Value>::iterator it = txn->writes_.begin();
+        it != txn->writes_.end(); ++it) {
+      storage_->Write(it->first, it->second, txn->unique_id_);
+    }
   }
 }
 
@@ -455,7 +464,7 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
         it != txn->writeset_.end(); ++it) {
     storage_->Lock(*it);
     flag = storage_->CheckWrite(*it, txn->unique_id_);
-    storage->Unlock(*it);
+    storage_->Unlock(*it);
 
     if(!flag){
       flag = false;
