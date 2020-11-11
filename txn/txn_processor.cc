@@ -253,18 +253,9 @@ void TxnProcessor::ExecuteTxn(Txn* txn) {
 
 void TxnProcessor::ApplyWrites(Txn* txn) {
   // Write buffered writes out to storage.
-  if(mode_ != MVCC){
-    for (map<Key, Value>::iterator it = txn->writes_.begin();
-        it != txn->writes_.end(); ++it) {
-      storage_->Lock(it->first);
-      storage_->Write(it->first, it->second, txn->unique_id_);
-      storage_->Unlock(it->first);
-    }
-  } else {
-    for (map<Key, Value>::iterator it = txn->writes_.begin();
-        it != txn->writes_.end(); ++it) {
-      storage_->Write(it->first, it->second, txn->unique_id_);
-    }
+  for (map<Key, Value>::iterator it = txn->writes_.begin();
+      it != txn->writes_.end(); ++it) {
+    storage_->Write(it->first, it->second, txn->unique_id_);
   }
 }
 
@@ -424,9 +415,6 @@ void ExecuteTxnParallel(Txn *txn) {
 
 
 void TxnProcessor::MVCCExecuteTxn(Txn* txn){
-  // Get the start time
-  txn->occ_start_time_ = GetTime();
-
   // Read everything in from readset.
   for (set<Key>::iterator it = txn->readset_.begin();
         it != txn->readset_.end(); ++it) {
@@ -459,20 +447,22 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
   //   Release all locks for keys in the write_set_
   //   Cleanup txn
   //   Completely restart the transaction.
-
   for (set<Key>::iterator it = txn->writeset_.begin();
         it != txn->writeset_.end(); ++it) {
     storage_->Lock(*it);
-    flag = storage_->CheckWrite(*it, txn->unique_id_);
-    storage_->Unlock(*it);
+  }
 
-    if(!flag){
-      flag = false;
-      break;
-    }
+  for (set<Key>::iterator it = txn->writeset_.begin();
+        it != txn->writeset_.end(); ++it) {
+    flag = storage_->CheckWrite(*it, txn->unique_id_);
+    if(!flag) break;
   }
 
   if(!flag){
+    for (set<Key>::iterator it = txn->writeset_.begin();
+        it != txn->writeset_.end(); ++it) {
+      storage_->Unlock(*it);
+    }
     txn->reads_.empty();
     txn->writes_.empty();
     txn->status_ = INCOMPLETE;
@@ -490,6 +480,10 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
     } else{
       ApplyWrites(txn);
       txn->status_ = COMMITTED;
+    }
+    for (set<Key>::iterator it = txn->writeset_.begin();
+        it != txn->writeset_.end(); ++it) {
+      storage_->Unlock(*it);
     }
     txn_results_.Push(txn);
   }
