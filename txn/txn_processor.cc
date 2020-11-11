@@ -451,6 +451,18 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
   //   Cleanup txn
   //   Completely restart the transaction.
 
+  for (set<Key>::iterator it = txn->writeset_.begin();
+        it != txn->writeset_.end(); ++it) {
+    storage_->Lock(*it);
+    flag = storage_->CheckWrite(*it, txn->unique_id_);
+    storage->Unlock(*it);
+
+    if(!flag){
+      flag = false;
+      break;
+    }
+  }
+
   if(!flag){
     txn->reads_.empty();
     txn->writes_.empty();

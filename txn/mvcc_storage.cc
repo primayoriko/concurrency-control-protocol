@@ -49,20 +49,27 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
   // (version_id) is the largest write timestamp less than or equal to txn_unique_id.
   if (mvcc_data_.count(key)) {
     deque<Version*>* data = mvcc_data_[key];
+    Version * q;
 
     for (deque<Version*>::iterator it = data->begin();
           it != data->end(); ++it) {
       // Save each read result iff record exists in storage.
       Version* v = *it;
       if(v->version_id_ <= txn_unique_id){
-        *result = v->value_;
+        *q = v;
       }
     }
 
-    return true;
-  } else {
-    return false;
-  }
+    if(q != NULL){
+      *result = *q->value_;
+      if(q->max_read_id_ < txn_unique_id){
+        q->max_read_id_ = txn_unique_id;
+      }
+      return true;
+    }
+  } 
+  
+  return false;
 }
 
 
@@ -78,9 +85,26 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
   // write_set. Return true if this key passes the check, return false if not. 
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
+  if (mvcc_data_.count(key)) {
+    deque<Version*>* data = mvcc_data_[key];
+    Version * q;
 
-  
-  return true;
+    for (deque<Version*>::iterator it = data->begin();
+          it != data->end(); ++it) {
+      // Save each read result iff record exists in storage.
+      Version* v = *it;
+      if(v->version_id_ <= txn_unique_id){
+        *q = v;
+      }
+    }
+
+    if(q == NULL || q->max_read_id_ > txn_unique_id){
+      return false;
+    }
+    return true;
+  } else {
+    return false;
+  }
 }
 
 // MVCC Write, call this method only if CheckWrite return true.
