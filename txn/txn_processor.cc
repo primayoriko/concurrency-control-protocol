@@ -256,9 +256,9 @@ void TxnProcessor::ApplyWrites(Txn* txn) {
   if(mode_ != MVCC){
     for (map<Key, Value>::iterator it = txn->writes_.begin();
         it != txn->writes_.end(); ++it) {
-      storage_->Lock(*it);
+      storage_->Lock(it->first);
       storage_->Write(it->first, it->second, txn->unique_id_);
-      storage_->Unlock(*it);
+      storage_->Unlock(it->first);
     }
   } else {
     for (map<Key, Value>::iterator it = txn->writes_.begin();
