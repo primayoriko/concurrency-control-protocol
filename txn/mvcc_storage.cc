@@ -94,7 +94,9 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
     for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
       Version* v = *it;
       if(v->version_id_ <= txn_unique_id){
-        vk = v;
+        if(vk == NULL || vk->version_id_ < v->version_id_){
+          vk = v;
+        }
       }
     }
 
@@ -126,7 +128,9 @@ void MVCCStorage::Write(Key key, Value value, int txn_unique_id) {
   for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
     Version* v = *it;
     if(v->version_id_ <= txn_unique_id){
-      vk = v;
+      if(vk == NULL || vk->version_id_ < v->version_id_){
+        vk = v;
+      }
     }
   }
 

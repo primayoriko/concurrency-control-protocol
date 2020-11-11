@@ -474,18 +474,12 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
     mutex_.Unlock(); 
 
   } else {
-    // if (txn->Status() == COMPLETED_A) {
-    //   txn->status_ = ABORTED;
-    // } else{
     ApplyWrites(txn);
-    txn->status_ = COMMITTED;
-    // }
     for (set<Key>::iterator it = txn->writeset_.begin();
         it != txn->writeset_.end(); ++it) {
       storage_->Unlock(*it);
     }
     completed_txns_.Push(txn);
-    txn_results_.Push(txn);
   }
 }
 
@@ -512,13 +506,14 @@ void TxnProcessor::RunMVCCScheduler() {
     }
 
     // Validate completed transactions, serially
-    // Txn *finished;
-    // while (completed_txns_.Pop(&finished)) {
-    //   if (finished->Status() == COMPLETED_A) {
-    //     finished->status_ = ABORTED;
-    //   }
-    //   txn_results_.Push(finished);
-    // }
+    Txn *finished;
+    while (completed_txns_.Pop(&finished)) {
+      // if (finished->Status() == COMPLETED_A) {
+      //   finished->status_ = ABORTED;
+      // }
+      txn->status_ = COMMITTED;
+      txn_results_.Push(finished);
+    }
   }
 }
 
