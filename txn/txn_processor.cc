@@ -413,12 +413,9 @@ void ExecuteTxnParallel(Txn *txn) {
 
 // }
 
-
 void TxnProcessor::MVCCExecuteTxn(Txn* txn){
-  // Read everything in from readset.
   for (set<Key>::iterator it = txn->readset_.begin();
         it != txn->readset_.end(); ++it) {
-    // Save each read result iff record exists in storage.
     Value result;
     storage_->Lock(*it);
     if (storage_->Read(*it, &result))
@@ -426,10 +423,8 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
     storage_->Unlock(*it);
   }
 
-  // Also read everything in from writeset.
   for (set<Key>::iterator it = txn->writeset_.begin();
         it != txn->writeset_.end(); ++it) {
-    // Save each read result iff record exists in storage.
     Value result;
     storage_->Lock(*it);
     if (storage_->Read(*it, &result))
@@ -437,20 +432,10 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
     storage_->Unlock(*it);
   }
 
-  // Execute txn's program logic.
   txn->Run();
 
   bool flag = true;
 
-  // Acquire all locks for keys in the write_set_
-  // Call MVCCStorage::CheckWrite method to check all keys in the write_set_
-  // If (each key passed the check)
-  //   Apply the writes
-  //   Release all locks for keys in the write_set_
-  // else if (at least one key failed the check)
-  //   Release all locks for keys in the write_set_
-  //   Cleanup txn
-  //   Completely restart the transaction.
   for (set<Key>::iterator it = txn->writeset_.begin();
         it != txn->writeset_.end(); ++it) {
     storage_->Lock(*it);
@@ -483,7 +468,9 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
         it != txn->writeset_.end(); ++it) {
       storage_->Unlock(*it);
     }
-    completed_txns_.Push(txn);
+    txn->status_ = COMMITTED;
+    // completed_txns_.Push(txn);
+    // txn_results_.Push(txn);
   }
 }
 
@@ -494,29 +481,15 @@ void TxnProcessor::RunMVCCScheduler() {
 
   // Hint:Pop a txn from txn_requests_, and pass it to a thread to execute.
   // Note that you may need to create another execute method, like TxnProcessor::MVCCExecuteTxn.
-  //
-  // [For now, run serial scheduler in order to make it through the test
-  // suite]
 
   while (tp_.Active()) {
     Txn *txn;
     if (txn_requests_.Pop(&txn)) {
-
       // Start txn running in its own thread.
       tp_.RunTask(new Method<TxnProcessor, void, Txn*>(
                   this,
                   &TxnProcessor::MVCCExecuteTxn,
                   txn));
-    }
-
-    // Validate completed transactions, serially
-    Txn *finished;
-    while (completed_txns_.Pop(&finished)) {
-      // if (finished->Status() == COMPLETED_A) {
-      //   finished->status_ = ABORTED;
-      // }
-      txn->status_ = COMMITTED;
-      txn_results_.Push(finished);
     }
   }
 }
