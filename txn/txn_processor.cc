@@ -473,18 +473,18 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
     txn_requests_.Push(txn);
     mutex_.Unlock(); 
 
-    // completed_txns_.Push(txn);
   } else {
-    if (txn->Status() == COMPLETED_A) {
-      txn->status_ = ABORTED;
-    } else{
-      ApplyWrites(txn);
-      txn->status_ = COMMITTED;
-    }
+    // if (txn->Status() == COMPLETED_A) {
+    //   txn->status_ = ABORTED;
+    // } else{
+    ApplyWrites(txn);
+    txn->status_ = COMMITTED;
+    // }
     for (set<Key>::iterator it = txn->writeset_.begin();
         it != txn->writeset_.end(); ++it) {
       storage_->Unlock(*it);
     }
+    completed_txns_.Push(txn);
     txn_results_.Push(txn);
   }
 }
