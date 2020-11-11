@@ -60,7 +60,7 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
     }
 
     if(q != NULL){
-      *result = *q->value_;
+      *result = q->value_;
       if(q->max_read_id_ < txn_unique_id){
         q->max_read_id_ = txn_unique_id;
       }
