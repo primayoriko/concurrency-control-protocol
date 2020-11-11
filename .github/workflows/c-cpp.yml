@@ -16,7 +16,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name : check cpu
-      run : ls -lh /sys/devices/system/cpu 
-    - name: test
-      run: make test
+    - name  : check user
+      run   : whoami
+    - name  : check cpu
+      run   : cat /sys/devices/system/cpu/online 
+    - name  : online cpu 1
+      run   : echo 1 > /sys/devices/system/cpu/cpu1/online \
+        grep "processor" /proc/cpuinfo
+    - name  : test
+      run   : make test
