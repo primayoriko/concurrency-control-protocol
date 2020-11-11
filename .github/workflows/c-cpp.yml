@@ -4,9 +4,10 @@ on:
   push:
     branches: 
       - main
-      - test_cpu_test
+      - test_cpu_set
   pull_request:
-    branches: [ main ]
+    branches: 
+      - main 
 
 jobs:
   build:
