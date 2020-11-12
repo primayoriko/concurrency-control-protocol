@@ -400,7 +400,7 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
     if (txn->Status() == COMPLETED_A) {
       txn->status_ = ABORTED;
     } else {
-      // ApplyWrites(txn);
+      ApplyWrites(txn);
       txn->status_ = COMMITTED;
     }
     for (set<Key>::iterator it = txn->writeset_.begin();

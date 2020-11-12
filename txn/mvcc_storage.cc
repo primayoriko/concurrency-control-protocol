@@ -126,19 +126,24 @@ void MVCCStorage::Write(Key key, Value value, int txn_unique_id) {
   // into the version_lists. Note that InitStorage() also calls this method to init storage. 
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
+  if(mvcc_data_[key] == NULL){
+    // deque<Version*>* deq = (deque<Version*>*) malloc(sizeof(deque<Version*>));
+    // mvcc_data_[key] = deq;
+    deque<Version*>* deq = new deque<Version*>();
+    mvcc_data_[key] = deq;
+  }
 
-  // deque<Version*>* data = mvcc_data_[key];
-  // // int max_version = -1;
+  deque<Version*>* data = mvcc_data_[key];
   // Version* vk;
 
-  // for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
-  //   // Version* v = *it;
-  //   // if(v->version_id_ <= txn_unique_id){
-  //   //   if(vk == NULL || vk->version_id_ < v->version_id_){
-  //   //     vk = v;
-  //   //   }
-  //   // }
-  // }
+  for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
+    // Version* v = *it;
+    // if(v->version_id_ <= txn_unique_id){
+    //   if(vk == NULL || vk->version_id_ < v->version_id_){
+    //     vk = v;
+    //   }
+    // }
+  }
 
   // if(vk->version_id_ == txn_unique_id){
   //   vk->value_ = value;
