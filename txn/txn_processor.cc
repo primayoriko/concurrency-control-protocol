@@ -301,7 +301,13 @@ void TxnProcessor::RunOCCScheduler() {
         finished->status_ = ABORTED;
       } else {
         bool valid = OCCValidateTransaction(*finished);
-        if (!valid) {
+        if (valid) {
+          // Commit the transaction
+          ApplyWrites(finished);
+          txn->status_ = COMMITTED;
+          txn_results_.Push(finished);
+          
+        } else {
           // Cleanup and restart
           finished->reads_.empty();
           finished->writes_.empty();
@@ -312,14 +318,9 @@ void TxnProcessor::RunOCCScheduler() {
           next_unique_id_++;
           txn_requests_.Push(finished);
           mutex_.Unlock();
-        } else {
-          // Commit the transaction
-          ApplyWrites(finished);
-          txn->status_ = COMMITTED;
         }
       }
 
-      txn_results_.Push(finished);
     }
   }
 }
