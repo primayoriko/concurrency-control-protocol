@@ -7,6 +7,15 @@ on:
     branches: [ main ]
 
 jobs:
+  build_local:
+
+    runs-on: self-hosted
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: test
+      run: make test
+  
   build:
 
     runs-on: ubuntu-latest
@@ -15,3 +24,5 @@ jobs:
     - uses: actions/checkout@v2
     - name: test
       run: make test
+  
+  
