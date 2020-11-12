@@ -15,14 +15,14 @@ void MVCCStorage::InitStorage() {
 // Free memory.
 MVCCStorage::~MVCCStorage() {
   for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_.begin();
-      it != mvcc_data_.end(); ++it) {
+       it != mvcc_data_.end(); ++it) {
     delete it->second;          
   }
   
   mvcc_data_.clear();
   
   for (unordered_map<Key, Mutex*>::iterator it = mutexs_.begin();
-        it != mutexs_.end(); ++it) {
+       it != mutexs_.end(); ++it) {
     delete it->second;          
   }
   
@@ -47,6 +47,10 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
   
   // Hint: Iterate the version_lists and return the verion whose write timestamp
   // (version_id) is the largest write timestamp less than or equal to txn_unique_id.
+  
+  // *result = (Value) 72;
+  // return true;
+
   if (mvcc_data_.count(key)) {
     deque<Version*>* data = mvcc_data_[key];
     Version * q;
@@ -86,6 +90,8 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
   // write_set. Return true if this key passes the check, return false if not. 
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
+
+  // return true;
   if (mvcc_data_.count(key)) {
     deque<Version*>* data = mvcc_data_[key];
     // int max_version = -1;
@@ -120,31 +126,31 @@ void MVCCStorage::Write(Key key, Value value, int txn_unique_id) {
   // into the version_lists. Note that InitStorage() also calls this method to init storage. 
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
-  
-  deque<Version*>* data = mvcc_data_[key];
-  // int max_version = -1;
-  Version* vk;
 
-  for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
-    Version* v = *it;
-    if(v->version_id_ <= txn_unique_id){
-      if(vk == NULL || vk->version_id_ < v->version_id_){
-        vk = v;
-      }
-    }
-  }
+  // deque<Version*>* data = mvcc_data_[key];
+  // // int max_version = -1;
+  // Version* vk;
 
-  if(vk->version_id_ == txn_unique_id){
-    vk->value_ = value;
-    return;
-  }
+  // for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
+  //   // Version* v = *it;
+  //   // if(v->version_id_ <= txn_unique_id){
+  //   //   if(vk == NULL || vk->version_id_ < v->version_id_){
+  //   //     vk = v;
+  //   //   }
+  //   // }
+  // }
 
-  Version *vn = (Version*) malloc(sizeof(Version));
-  vn->max_read_id_ = txn_unique_id;
-  vn->version_id_ = txn_unique_id;
-  vn->value_ = value;
+  // if(vk->version_id_ == txn_unique_id){
+  //   vk->value_ = value;
+  //   return;
+  // }
 
-  mvcc_data_[key]->push_back(vn);
+  // Version *vn = (Version*) malloc(sizeof(Version));
+  // vn->max_read_id_ = txn_unique_id;
+  // vn->version_id_ = txn_unique_id;
+  // vn->value_ = value;
+
+  // mvcc_data_[key]->push_back(vn);
 }
 
 

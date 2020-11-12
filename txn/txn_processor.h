@@ -140,8 +140,6 @@ class TxnProcessor {
   // validation.
   AtomicSet<Txn*> active_set_;
 
-  AtomicQueue<std::pair<Txn*, bool> > validated_txns_;
-  
   // Used it for critical section in parallel occ.
   Mutex active_set_mutex_;
 

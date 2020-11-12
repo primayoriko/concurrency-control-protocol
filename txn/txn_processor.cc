@@ -2,6 +2,7 @@
 // Modified by: Christina Wallin (christina.wallin@yale.edu)
 // Modified by: Kun Ren (kun.ren@yale.edu)
 
+
 #include "txn/txn_processor.h"
 #include <stdio.h>
 #include <set>
@@ -121,7 +122,7 @@ void TxnProcessor::RunLockingScheduler() {
       bool blocked = false;
       // Request read locks.
       for (set<Key>::iterator it = txn->readset_.begin();
-            it != txn->readset_.end(); ++it) {
+           it != txn->readset_.end(); ++it) {
         if (!lm_->ReadLock(txn, *it)) {
           blocked = true;
           // If readset_.size() + writeset_.size() > 1, and blocked, just abort
@@ -141,7 +142,7 @@ void TxnProcessor::RunLockingScheduler() {
       if (blocked == false) {
         // Request write locks.
         for (set<Key>::iterator it = txn->writeset_.begin();
-              it != txn->writeset_.end(); ++it) {
+             it != txn->writeset_.end(); ++it) {
           if (!lm_->WriteLock(txn, *it)) {
             blocked = true;
             // If readset_.size() + writeset_.size() > 1, and blocked, just abort
@@ -191,12 +192,12 @@ void TxnProcessor::RunLockingScheduler() {
 
       // Release read locks.
       for (set<Key>::iterator it = txn->readset_.begin();
-            it != txn->readset_.end(); ++it) {
+           it != txn->readset_.end(); ++it) {
         lm_->Release(txn, *it);
       }
       // Release write locks.
       for (set<Key>::iterator it = txn->writeset_.begin();
-            it != txn->writeset_.end(); ++it) {
+           it != txn->writeset_.end(); ++it) {
         lm_->Release(txn, *it);
       }
 
@@ -228,7 +229,7 @@ void TxnProcessor::ExecuteTxn(Txn* txn) {
 
   // Read everything in from readset.
   for (set<Key>::iterator it = txn->readset_.begin();
-        it != txn->readset_.end(); ++it) {
+       it != txn->readset_.end(); ++it) {
     // Save each read result iff record exists in storage.
     Value result;
     if (storage_->Read(*it, &result))
@@ -237,7 +238,7 @@ void TxnProcessor::ExecuteTxn(Txn* txn) {
 
   // Also read everything in from writeset.
   for (set<Key>::iterator it = txn->writeset_.begin();
-        it != txn->writeset_.end(); ++it) {
+       it != txn->writeset_.end(); ++it) {
     // Save each read result iff record exists in storage.
     Value result;
     if (storage_->Read(*it, &result))
@@ -254,7 +255,7 @@ void TxnProcessor::ExecuteTxn(Txn* txn) {
 void TxnProcessor::ApplyWrites(Txn* txn) {
   // Write buffered writes out to storage.
   for (map<Key, Value>::iterator it = txn->writes_.begin();
-      it != txn->writes_.end(); ++it) {
+       it != txn->writes_.end(); ++it) {
     storage_->Write(it->first, it->second, txn->unique_id_);
   }
 }
@@ -278,12 +279,11 @@ bool TxnProcessor::OCCValidateTransaction(const Txn &txn) const {
 }
 
 void TxnProcessor::RunOCCScheduler() {
-  Txn *txn;
   // Fetch transaction requests, and immediately begin executing them.
   while (tp_.Active()) {
-    
+    Txn *txn;
     if (txn_requests_.Pop(&txn)) {
-      txn->occ_start_time_ = GetTime();
+
       // Start txn running in its own thread.
       tp_.RunTask(new Method<TxnProcessor, void, Txn*>(
                   this,
@@ -332,94 +332,17 @@ void TxnProcessor::RunOCCParallelScheduler() {
   //
   // [For now, run serial scheduler in order to make it through the test
   // suite]
-
   RunSerialScheduler();
 }
-
-void ExecuteTxnParallel(Txn *txn) {
-
-  // txn->occ_start_time_ = GetTime();
-  // // perform read phase
-  // for (set<Key>::iterator it = txn->readset_.begin();
-  //       it != txn->readset_.end(); ++it) {
-  //   // Save each read result iff record exists in storage.
-  //   Value result;
-  //   if (storage_->Read(*it, &result))
-  //     txn->reads_[*it] = result;
-  // }
-  // //   <Start of critical section>
-  // active_set_mutex_.lock();
-  // #define N 2
-  // int i = 0;
-  //   while (i++ < N && completed_txns_.Pop(&txn)) {
-  //     AtomicSet<Txn*> active_set_copy = active_set_;
-  //     active_set_.Insert(txn);
-  //     tp_.RunTask(new Method<TxnProcessor, void, Txn*, AtomicSet<Txn*>> (
-  //           this,
-  //           &TxnProcessor::ValidateTxn,
-  //           txn,
-  //           active_set_copy));
-  //   }
-  
-  // //   <End of critical section>
-  // active_set_mutex_.unlock();
-}
-// void TxnProcessor::ValidateTxn(Txn* txn, AtomicSet<Txn*> active_set_copy) {
-//   // assign aborted transaction and only accept commited
-//   if (txn->Status() == COMPLETED_A) {
-//     txn->status_ = ABORTED;
-//     validated_txns_.Push(std::make_pair(txn, true));
-//     return;
-//   } else if (txn->Status() != COMPLETED_C) {
-//     DIE("Completed Txn has invalid TxnStatus: " << txn->Status());
-//   }
-
-//   bool verified = true;
-
-//   // check for overlap in readset
-//   for (set<Key>::iterator it = txn->readset_.begin();
-//        it != txn->readset_.end(); ++it) {
-//     // if last modified > my start then invalid
-//     if (storage_.Timestamp(*it) > txn->occ_start_time_) {
-//       verified = false;
-//       break;
-//     }
-//   }
-
-  // check for overlap in writeset
-//   for (set<Key>::iterator it = txn->writeset_.begin();
-//        it != txn->writeset_.end(); ++it) {
-//     // if last modified > my start then invalid
-//     if (storage_.Timestamp(*it) > txn->occ_start_time_) {
-//       verified = false;
-//       break;
-//     }
-//   }
-
-//   // check if the writeset intersects with the read or write sets
-//   // of any concurrently validating txns
-//   for (set<Txn*>::iterator it = active_set_copy.begin();
-//        it != active_set_copy.end(); ++it) {
-//     for (set<Key>::iterator it2 = txn->writeset_.begin();
-//         it2 != txn->writeset_.end(); ++it2) {
-//       verified = verified && !(*it)->writeset_.count(*it2) &&
-//                  !(*it)->readset_.count(*it2);
-//       if (!verified) break;
-//     }
-//   }
-
-//   if (verified) ApplyWrites(txn);
-//   validated_txns_.Push(std::make_pair(txn, verified));
-
-// }
 
 void TxnProcessor::MVCCExecuteTxn(Txn* txn){
   for (set<Key>::iterator it = txn->readset_.begin();
         it != txn->readset_.end(); ++it) {
     Value result;
     storage_->Lock(*it);
-    if (storage_->Read(*it, &result))
+    if (storage_->Read(*it, &result, txn->unique_id_)){
       txn->reads_[*it] = result;
+    }
     storage_->Unlock(*it);
   }
 
@@ -427,12 +350,23 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
         it != txn->writeset_.end(); ++it) {
     Value result;
     storage_->Lock(*it);
-    if (storage_->Read(*it, &result))
+    if (storage_->Read(*it, &result, txn->unique_id_)){
       txn->reads_[*it] = result;
+    }
     storage_->Unlock(*it);
   }
 
   txn->Run();
+
+  // if (txn->Status() == COMPLETED_A) {
+  //   txn->status_ = ABORTED;
+  // } else {
+  //   txn->status_ = COMMITTED;
+  // }
+
+  // completed_txns_.Push(txn);
+
+  // txn_results_.Push(txn);
 
   bool flag = true;
 
@@ -463,14 +397,18 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
     mutex_.Unlock(); 
 
   } else {
-    ApplyWrites(txn);
+    if (txn->Status() == COMPLETED_A) {
+      txn->status_ = ABORTED;
+    } else {
+      // ApplyWrites(txn);
+      txn->status_ = COMMITTED;
+    }
     for (set<Key>::iterator it = txn->writeset_.begin();
         it != txn->writeset_.end(); ++it) {
       storage_->Unlock(*it);
     }
-    txn->status_ = COMMITTED;
-    // completed_txns_.Push(txn);
-    // txn_results_.Push(txn);
+    completed_txns_.Push(txn);
+    txn_results_.Push(txn);
   }
 }
 
@@ -481,15 +419,30 @@ void TxnProcessor::RunMVCCScheduler() {
 
   // Hint:Pop a txn from txn_requests_, and pass it to a thread to execute.
   // Note that you may need to create another execute method, like TxnProcessor::MVCCExecuteTxn.
-
+  //
+  // [For now, run serial scheduler in order to make it through the test
+  // suite]
   while (tp_.Active()) {
-    Txn *txn;
-    if (txn_requests_.Pop(&txn)) {
-      // Start txn running in its own thread.
-      tp_.RunTask(new Method<TxnProcessor, void, Txn*>(
-                  this,
-                  &TxnProcessor::MVCCExecuteTxn,
-                  txn));
+  Txn *txn;
+  if (txn_requests_.Pop(&txn)) {
+    // Start txn running in its own thread.
+    tp_.RunTask(new Method<TxnProcessor, void, Txn*>(
+                this,
+                &TxnProcessor::MVCCExecuteTxn,
+                txn));
+
+    // Txn *finished;
+    // while (completed_txns_.Pop(&finished)) {
+    //   if (finished->Status() == COMPLETED_A) {
+    //     finished->status_ = ABORTED;
+    //   } else {
+    //     if (finished->status_ != INCOMPLETE) {
+    //       finished->status_ = COMMITTED;
+    //     }
+    //   }
+
+    //   txn_results_.Push(finished);
+    // }
     }
   }
 }
