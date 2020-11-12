@@ -1,7 +1,9 @@
 // Author: Kun Ren (kun.ren@yale.edu)
 // Modified by Daniel Abadi
-
+#include <iostream>
 #include "txn/mvcc_storage.h"
+
+using namespace std;
 
 // Init the storage
 void MVCCStorage::InitStorage() {
@@ -47,33 +49,31 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
   
   // Hint: Iterate the version_lists and return the verion whose write timestamp
   // (version_id) is the largest write timestamp less than or equal to txn_unique_id.
-  
-  // *result = (Value) 72;
-  // return true;
 
   if (mvcc_data_.count(key)) {
     deque<Version*>* data = mvcc_data_[key];
-    Version * q;
+    Version * q = nullptr;
 
     for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
       // Save each read result iff record exists in storage.
       Version* v = *it;
       if(v->version_id_ <= txn_unique_id){
-        if(q == NULL || q->version_id_ < v->version_id_){
+        if(q == nullptr || q->version_id_ < v->version_id_){
           q = v;
         }
       }
     }
 
-    if(q != NULL){
+    // cout<<txn_unique_id<<endl;
+    if(q != nullptr){
       *result = q->value_;
+      // cout<<*result<<endl;
       if(q->max_read_id_ < txn_unique_id){
         q->max_read_id_ = txn_unique_id;
       }
       return true;
     }
   } 
-  
   return false;
 }
 
@@ -91,16 +91,15 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
 
-  // return true;
   if (mvcc_data_.count(key)) {
     deque<Version*>* data = mvcc_data_[key];
     // int max_version = -1;
-    Version* vk;
+    Version* vk = nullptr;
 
     for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
       Version* v = *it;
       if(v->version_id_ <= txn_unique_id){
-        if(vk == NULL || vk->version_id_ < v->version_id_){
+        if(vk == nullptr || vk->version_id_ < v->version_id_){
           vk = v;
         }
       }
@@ -110,7 +109,7 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
     // if RTS(Qk) > Ti, abort
     // else if WTS(Qk) = Ti, rewrite
     // else, make new version
-    return (vk != NULL && vk->max_read_id_ <= txn_unique_id);
+    return (vk != nullptr && vk->max_read_id_ <= txn_unique_id);
   } else {
     return false;
   }
@@ -126,36 +125,32 @@ void MVCCStorage::Write(Key key, Value value, int txn_unique_id) {
   // into the version_lists. Note that InitStorage() also calls this method to init storage. 
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
-  if(mvcc_data_[key] == NULL){
-    // deque<Version*>* deq = (deque<Version*>*) malloc(sizeof(deque<Version*>));
-    // mvcc_data_[key] = deq;
-    deque<Version*>* deq = new deque<Version*>();
-    mvcc_data_[key] = deq;
+
+  if(mvcc_data_.count(key) == 0){
+    mvcc_data_[key] = new deque<Version*>();
+    // Version *vn = new Version {value, txn_unique_id, txn_unique_id};
+    // mvcc_data_[key]->push_back(vn);
+    // int l = mvcc_data_[key]->at(0)->value_;
+    // cout<<l<<endl;
+  } else {
+      deque<Version*>* data = mvcc_data_[key];
+      Version* vk = nullptr;
+
+      for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
+        Version* v = *it;
+        if(v->version_id_ <= txn_unique_id){
+          if(vk == nullptr || vk->version_id_ < v->version_id_){
+            vk = v;
+          }
+        }
+      }
+
+      if(vk->version_id_ == txn_unique_id){
+        vk->value_ = value;
+        return;
+      }
   }
 
-  deque<Version*>* data = mvcc_data_[key];
-  // Version* vk;
-
-  for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
-    // Version* v = *it;
-    // if(v->version_id_ <= txn_unique_id){
-    //   if(vk == NULL || vk->version_id_ < v->version_id_){
-    //     vk = v;
-    //   }
-    // }
-  }
-
-  // if(vk->version_id_ == txn_unique_id){
-  //   vk->value_ = value;
-  //   return;
-  // }
-
-  // Version *vn = (Version*) malloc(sizeof(Version));
-  // vn->max_read_id_ = txn_unique_id;
-  // vn->version_id_ = txn_unique_id;
-  // vn->value_ = value;
-
-  // mvcc_data_[key]->push_back(vn);
+  Version *vn = new Version {value, txn_unique_id, txn_unique_id};
+  mvcc_data_[key]->push_back(vn);
 }
-
-

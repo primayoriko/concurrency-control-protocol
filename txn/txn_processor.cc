@@ -2,12 +2,15 @@
 // Modified by: Christina Wallin (christina.wallin@yale.edu)
 // Modified by: Kun Ren (kun.ren@yale.edu)
 
-
-#include "txn/txn_processor.h"
 #include <stdio.h>
 #include <set>
+#include <iostream>
 
+#include "txn/txn_processor.h"
 #include "txn/lock_manager.h"
+
+
+using namespace std;
 
 // Thread & queue counts for StaticThreadPool initialization.
 #define THREAD_COUNT 8
@@ -358,16 +361,6 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
 
   txn->Run();
 
-  // if (txn->Status() == COMPLETED_A) {
-  //   txn->status_ = ABORTED;
-  // } else {
-  //   txn->status_ = COMMITTED;
-  // }
-
-  // completed_txns_.Push(txn);
-
-  // txn_results_.Push(txn);
-
   bool flag = true;
 
   for (set<Key>::iterator it = txn->writeset_.begin();
@@ -423,26 +416,13 @@ void TxnProcessor::RunMVCCScheduler() {
   // [For now, run serial scheduler in order to make it through the test
   // suite]
   while (tp_.Active()) {
-  Txn *txn;
-  if (txn_requests_.Pop(&txn)) {
-    // Start txn running in its own thread.
-    tp_.RunTask(new Method<TxnProcessor, void, Txn*>(
-                this,
-                &TxnProcessor::MVCCExecuteTxn,
-                txn));
-
-    // Txn *finished;
-    // while (completed_txns_.Pop(&finished)) {
-    //   if (finished->Status() == COMPLETED_A) {
-    //     finished->status_ = ABORTED;
-    //   } else {
-    //     if (finished->status_ != INCOMPLETE) {
-    //       finished->status_ = COMMITTED;
-    //     }
-    //   }
-
-    //   txn_results_.Push(finished);
-    // }
+    Txn *txn;
+    if (txn_requests_.Pop(&txn)) {
+      // Start txn running in its own thread.
+      tp_.RunTask(new Method<TxnProcessor, void, Txn*>(
+                  this,
+                  &TxnProcessor::MVCCExecuteTxn,
+                  txn));
     }
   }
 }

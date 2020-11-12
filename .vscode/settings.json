@@ -3,6 +3,10 @@
         "vector": "cpp",
         "xstring": "cpp",
         "xutility": "cpp",
-        "deque": "cpp"
+        "deque": "cpp",
+        "xtree": "cpp",
+        "ostream": "cpp",
+        "iostream": "cpp",
+        "map": "cpp"
     }
 }
