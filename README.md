@@ -40,6 +40,15 @@ in the terminal with root project directory as the terminal path.
 Here is testing result based on our PC (RAM: 16gb, CPU Core: 8 (Intel Core i7 8th Gen))
 
 1. Exclusive-only Simple Locking
+    
+   First test
+
+   ![lock-1](docs/ExclusiveLock.png)
+
+   Second test
+
+   ![lock-2](docs/ExclusiveLock.png)
+
 2. Serial Optimistic Concurrency Control (OCC)
    
     First test
