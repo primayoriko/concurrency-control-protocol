@@ -1,16 +1,13 @@
 // Author: Alexander Thomson (thomson@cs.yale.edu)
 // Modified by: Christina Wallin (christina.wallin@yale.edu)
 // Modified by: Kun Ren (kun.ren@yale.edu)
+// Modified again by: Naufal Prima Yoriko
 
 #include <stdio.h>
 #include <set>
-#include <iostream>
 
 #include "txn/txn_processor.h"
 #include "txn/lock_manager.h"
-
-
-using namespace std;
 
 // Thread & queue counts for StaticThreadPool initialization.
 #define THREAD_COUNT 8
@@ -414,9 +411,7 @@ void TxnProcessor::RunMVCCScheduler() {
 
   // Hint:Pop a txn from txn_requests_, and pass it to a thread to execute.
   // Note that you may need to create another execute method, like TxnProcessor::MVCCExecuteTxn.
-  //
-  // [For now, run serial scheduler in order to make it through the test
-  // suite]
+
   while (tp_.Active()) {
     Txn *txn;
     if (txn_requests_.Pop(&txn)) {

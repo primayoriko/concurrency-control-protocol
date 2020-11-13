@@ -1,9 +1,8 @@
 // Author: Kun Ren (kun.ren@yale.edu)
 // Modified by Daniel Abadi
-#include <iostream>
-#include "txn/mvcc_storage.h"
+// Modified again by: Naufal Prima Yoriko
 
-using namespace std;
+#include "txn/mvcc_storage.h"
 
 // Init the storage
 void MVCCStorage::InitStorage() {
@@ -17,14 +16,14 @@ void MVCCStorage::InitStorage() {
 // Free memory.
 MVCCStorage::~MVCCStorage() {
   for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_.begin();
-       it != mvcc_data_.end(); ++it) {
+        it != mvcc_data_.end(); ++it) {
     delete it->second;          
   }
   
   mvcc_data_.clear();
   
   for (unordered_map<Key, Mutex*>::iterator it = mutexs_.begin();
-       it != mutexs_.end(); ++it) {
+        it != mutexs_.end(); ++it) {
     delete it->second;          
   }
   
@@ -52,20 +51,19 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
 
   if (mvcc_data_.count(key)) {
     deque<Version*>* data = mvcc_data_[key];
-    Version* q = nullptr;
+    Version* vk = nullptr;
 
     for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
       Version* v = *it;
-      if(v->version_id_ <= txn_unique_id){
-        if(q == nullptr || q->version_id_ < v->version_id_){
-          q = v;
-        }
+      if(v->version_id_ <= txn_unique_id &&
+          (vk == nullptr || vk->version_id_ < v->version_id_)){
+        vk = v;
       }
     }
 
-    *result = q->value_;
-    if(q->max_read_id_ < txn_unique_id){
-      q->max_read_id_ = txn_unique_id;
+    *result = vk->value_;
+    if(vk->max_read_id_ < txn_unique_id){
+      vk->max_read_id_ = txn_unique_id;
     }
     return true;
   } 
@@ -92,10 +90,9 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
     for (deque<Version*>::iterator it = mvcc_data_[key]->begin();
           it != mvcc_data_[key]->end(); ++it) {
       Version* v = *it;
-      if(v->version_id_ <= txn_unique_id){
-        if(vk == nullptr || vk->version_id_ < v->version_id_){
-          vk = v;
-        }
+      if(v->version_id_ <= txn_unique_id &&
+          (vk == nullptr || vk->version_id_ < v->version_id_)){
+        vk = v;
       }
     }
 
