@@ -65,8 +65,10 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
     if(vk->max_read_id_ < txn_unique_id){
       vk->max_read_id_ = txn_unique_id;
     }
+    
     return true;
   } 
+
   return false;
 }
 
@@ -97,9 +99,9 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
     }
 
     return (vk != nullptr && vk->max_read_id_ <= txn_unique_id);
-  } else {
-    return false;
   }
+  
+  return false;
 }
 
 // MVCC Write, call this method only if CheckWrite return true.

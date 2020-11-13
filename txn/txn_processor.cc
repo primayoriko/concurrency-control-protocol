@@ -387,19 +387,22 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn){
     next_unique_id_++;
     txn_requests_.Push(txn);
     mutex_.Unlock(); 
-
   } else {
-    if (txn->Status() == COMPLETED_A) {
-      txn->status_ = ABORTED;
-    } else {
-      ApplyWrites(txn);
-      txn->status_ = COMMITTED;
-    }
+    // if (txn->Status() == COMPLETED_A) {
+    //   txn->status_ = ABORTED;
+    // } else {
+    //   ApplyWrites(txn);
+    //   txn->status_ = COMMITTED;
+    // }
+    
+    ApplyWrites(txn);
+    txn->status_ = COMMITTED;
     for (set<Key>::iterator it = txn->writeset_.begin();
         it != txn->writeset_.end(); ++it) {
       storage_->Unlock(*it);
     }
-    completed_txns_.Push(txn);
+
+    // completed_txns_.Push(txn);
     txn_results_.Push(txn);
   }
 }
