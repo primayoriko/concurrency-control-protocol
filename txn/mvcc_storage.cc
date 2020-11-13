@@ -1,9 +1,8 @@
 // Author: Kun Ren (kun.ren@yale.edu)
 // Modified by Daniel Abadi
-#include <iostream>
-#include "txn/mvcc_storage.h"
+// Modified again by: Naufal Prima Yoriko
 
-using namespace std;
+#include "txn/mvcc_storage.h"
 
 // Init the storage
 void MVCCStorage::InitStorage() {
@@ -17,14 +16,14 @@ void MVCCStorage::InitStorage() {
 // Free memory.
 MVCCStorage::~MVCCStorage() {
   for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_.begin();
-       it != mvcc_data_.end(); ++it) {
+        it != mvcc_data_.end(); ++it) {
     delete it->second;          
   }
   
   mvcc_data_.clear();
   
   for (unordered_map<Key, Mutex*>::iterator it = mutexs_.begin();
-       it != mutexs_.end(); ++it) {
+        it != mutexs_.end(); ++it) {
     delete it->second;          
   }
   
@@ -52,28 +51,24 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
 
   if (mvcc_data_.count(key)) {
     deque<Version*>* data = mvcc_data_[key];
-    Version * q = nullptr;
+    Version* vk = nullptr;
 
     for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
-      // Save each read result iff record exists in storage.
       Version* v = *it;
-      if(v->version_id_ <= txn_unique_id){
-        if(q == nullptr || q->version_id_ < v->version_id_){
-          q = v;
-        }
+      if(v->version_id_ <= txn_unique_id &&
+          (vk == nullptr || vk->version_id_ < v->version_id_)){
+        vk = v;
       }
     }
 
-    // cout<<txn_unique_id<<endl;
-    if(q != nullptr){
-      *result = q->value_;
-      // cout<<*result<<endl;
-      if(q->max_read_id_ < txn_unique_id){
-        q->max_read_id_ = txn_unique_id;
-      }
-      return true;
+    *result = vk->value_;
+    if(vk->max_read_id_ < txn_unique_id){
+      vk->max_read_id_ = txn_unique_id;
     }
+    
+    return true;
   } 
+
   return false;
 }
 
@@ -92,27 +87,21 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
   // call Lock(key) before you call this method and call Unlock(key) afterward.
 
   if (mvcc_data_.count(key)) {
-    deque<Version*>* data = mvcc_data_[key];
-    // int max_version = -1;
     Version* vk = nullptr;
 
-    for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
+    for (deque<Version*>::iterator it = mvcc_data_[key]->begin();
+          it != mvcc_data_[key]->end(); ++it) {
       Version* v = *it;
-      if(v->version_id_ <= txn_unique_id){
-        if(vk == nullptr || vk->version_id_ < v->version_id_){
-          vk = v;
-        }
+      if(v->version_id_ <= txn_unique_id &&
+          (vk == nullptr || vk->version_id_ < v->version_id_)){
+        vk = v;
       }
     }
 
-    // MVCC Write rule
-    // if RTS(Qk) > Ti, abort
-    // else if WTS(Qk) = Ti, rewrite
-    // else, make new version
     return (vk != nullptr && vk->max_read_id_ <= txn_unique_id);
-  } else {
-    return false;
   }
+  
+  return false;
 }
 
 // MVCC Write, call this method only if CheckWrite return true.
@@ -126,29 +115,24 @@ void MVCCStorage::Write(Key key, Value value, int txn_unique_id) {
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
 
-  if(mvcc_data_.count(key) == 0){
-    mvcc_data_[key] = new deque<Version*>();
-    // Version *vn = new Version {value, txn_unique_id, txn_unique_id};
-    // mvcc_data_[key]->push_back(vn);
-    // int l = mvcc_data_[key]->at(0)->value_;
-    // cout<<l<<endl;
+  if(mvcc_data_.count(key)){
+    Version* vk = nullptr;
+
+    for (deque<Version*>::iterator it = mvcc_data_[key]->begin(); 
+          it != mvcc_data_[key]->end(); ++it) {
+      Version* v = *it;
+      if(v->version_id_ <= txn_unique_id &&
+          (vk == nullptr || vk->version_id_ < v->version_id_)){
+        vk = v;
+      }
+    }
+
+    if(vk->version_id_ == txn_unique_id){
+      vk->value_ = value;
+      return;
+    }
   } else {
-      deque<Version*>* data = mvcc_data_[key];
-      Version* vk = nullptr;
-
-      for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
-        Version* v = *it;
-        if(v->version_id_ <= txn_unique_id){
-          if(vk == nullptr || vk->version_id_ < v->version_id_){
-            vk = v;
-          }
-        }
-      }
-
-      if(vk->version_id_ == txn_unique_id){
-        vk->value_ = value;
-        return;
-      }
+    mvcc_data_[key] = new deque<Version*>();
   }
 
   Version *vn = new Version {value, txn_unique_id, txn_unique_id};

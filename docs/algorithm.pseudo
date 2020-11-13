@@ -1,0 +1,103 @@
+function read(txn: Transaction, key: Key, output result: Value): boolean {
+    if(existKey(key)){
+        V :  Version
+    
+        /* Mendapatkan versi terbaru yang tidak lebih besar dari txn.timestamp */
+        v <- getRecentVersion(txn, key)
+        result <- v.value
+
+        if(v.readTimestamp < txn.timestamp){
+            v.readTimestamp <- txn.timestamp
+        }
+
+        return true
+    }
+
+    return false
+}
+
+
+function checkWrite(txn: Transaction, key: Key): boolean {
+    if(existKey(key)){
+        V : version
+
+        /* Mendapatkan versi terbaru yang tidak lebih besar dari txn.timestamp */
+        v <- getRecentVersion(txn, key)
+
+        if(v.readTimestamp <= txn.timestamp){
+            return true
+        }
+
+        return false
+    }
+
+    return false
+}
+
+procedure write(txn: Transaction, key: Key, newValue: Value) {
+    if(existKey(key)){
+        V : version
+
+        /* Mendapatkan versi terbaru yang tidak lebih besar dari txn.timestamp */
+        v <- getRecentVersion(txn, key)
+
+        if(v.writeTimestamp == txn.timestamp){
+            v.value = newValue
+        }
+
+    }
+
+    /* Menambah entri data baru di database
+        dimana readTimestamp dan writeTimestamp = txn.timestamp */
+    addEntry(key, newValue)
+}
+
+procedure MVCCScheduler() {
+    while(notEmpty(txnRequest)){
+        txn: Transaction
+        
+        txn <- pop(txnRequest)
+
+        /* menjalankan tiap transaksi di thread berbeda */
+        runMVCCTxn(txn)
+    }
+}
+
+procedure runMVCCTxn(txn: Transaction) {
+    foreach readReq in readSet{
+        lockData(readReq.key)
+        read(txn, readReq.key, readReq.value)
+        unlockData(readReq.key)
+    }
+
+    foreach writeReq in writeSet{
+        lockData(writeReq.key)
+        read(txn, writeReq.key, writeReq.value)
+        unlockData(writeReq.key)
+    }
+
+    /* menjalankan logic dari txn */
+    run(txn)
+    
+    foreach writeReq in writeSet{
+        lockData(writeReq.key)
+    }
+
+    foreach writeReq in writeSet{
+        if(not checkWrite(txn, writeReq.key)){
+            resetTxn(txn)
+            addTxnRequest(txn)
+            return
+        }
+    }
+
+    foreach writeReq in writeSet{
+        write(txn, key, writeReq.value)
+    }
+
+    foreach writeReq in writeSet{
+        unlockData(writeReq.key)
+    }
+
+    txn.status = COMMITTED
+}
