@@ -101,3 +101,32 @@ procedure runMVCCTxn(txn: Transaction) {
 
     txn.status = COMMITTED
 }
+
+
+procedure RunOCCScheduler(output txn : Transaction){
+    while thread_pool is still active do
+        if txn_request_list is not empty then
+            txn ← txn_request_list.pop()
+            txn.run()
+        if txn_finished_list is not empty then
+            txn ← txn_finished_list.pop()
+            if txn.status is COMPLETED_ABORT_SIGNAL then
+                txn.status ← ABORTED
+            else 
+                validate txn
+                if valid then
+                    COMMIT()
+                else 
+                    CLEAN UP()
+                    RESTART()
+}
+
+
+function OCCValidateTransaction(txn : Transaction): boolean{
+    foreach key in txn.readset_ do
+        if txn.start_time < storage.timestamp with appropriate key then
+            → false
+    foreach key in txn.writeset_ do
+        if txn.start_time < storage.timestamp with appropriate key then
+            → false
+}
