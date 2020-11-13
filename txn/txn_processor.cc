@@ -287,7 +287,6 @@ void TxnProcessor::RunOCCScheduler() {
 
     Txn *txn;
     if (txn_requests_.Pop(&txn)) {
-      txn->occ_start_time_ = GetTime();
       // Start txn running in its own thread.
       tp_.RunTask(new Method<TxnProcessor, void, Txn*>(
                   this,
