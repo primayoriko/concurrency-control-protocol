@@ -37,7 +37,7 @@ in the terminal with root project directory as the terminal path.
 ## Testing Result
 
 -------
-Here is testing result based on our first machine (RAM: 16gb, CPU Core: 8 (Intel Core i7 8th Gen))
+We perform benchmarking on some device, and here is testing result based on our first machine (HP Pavilion Laptop -> RAM: 16gb; CPU: 8 cores (Intel Core i7 8th Gen))
 
 1. Exclusive-only Simple Locking
     
@@ -51,7 +51,7 @@ Here is testing result based on our first machine (RAM: 16gb, CPU Core: 8 (Intel
 
 2. Serial Optimistic Concurrency Control (OCC)
    
-    First test
+    First test 
 
     ![occ-1](docs/OCC.png)
 
@@ -70,8 +70,12 @@ Here is testing result based on our first machine (RAM: 16gb, CPU Core: 8 (Intel
    ![mvcc-2](docs/MVCC-2.png)
 
 4. Comparison
+   
+    First test
 
-Here is testing result based on our second machine (RAM: 8gb, CPU Core: 6, Thread : 12 (Intel Core i7-9750 9th Gen))
+    ![mixed-1](docs/mixed.png)
+
+Then here is testing result based on our second machine (RAM: 8gb, CPU Core: 6, Thread : 12 (Intel Core i7-9750 9th Gen))
 1. Exclusive-only Simple Locking
     First test
 
