@@ -75,6 +75,10 @@ We perform benchmarking on some devices, and here is testing result based on our
 
     ![mixed-1](docs/mixed.png)
 
+    Second test
+
+    ![mixed-2](docs/mixed-2.png)
+
 Then here is testing result based on our second device (RAM: 8gb, CPU Core: 6, Thread : 12 (Intel Core i7-9750 9th Gen))
 1. Exclusive-only Simple Locking
     First test
@@ -107,3 +111,5 @@ Then here is testing result based on our second device (RAM: 8gb, CPU Core: 6, T
 ## Analysis
 
 -------
+
+<strong>COMING SOON</strong>
