@@ -1,0 +1,20 @@
+function read(txn: Transaction, key: Key, output result: Value): boolean {
+    V :  Version
+    
+    /* Mendapatkan versiterbaru yang tidak lebih besar dari txn.timestamp */
+    v <- getRecentVersion(txn, key)
+    result <- v.value
+
+    if(v.readTimestamp < txn.timestamp){
+        v.readTimestamp <- txn.timestamp
+    }
+}
+
+
+function checkWrite(): boolean {
+
+}
+
+procedure write() {
+
+}

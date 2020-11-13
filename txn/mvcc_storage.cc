@@ -52,10 +52,9 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
 
   if (mvcc_data_.count(key)) {
     deque<Version*>* data = mvcc_data_[key];
-    Version * q = nullptr;
+    Version* q = nullptr;
 
     for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
-      // Save each read result iff record exists in storage.
       Version* v = *it;
       if(v->version_id_ <= txn_unique_id){
         if(q == nullptr || q->version_id_ < v->version_id_){
@@ -64,15 +63,11 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
       }
     }
 
-    // cout<<txn_unique_id<<endl;
-    if(q != nullptr){
-      *result = q->value_;
-      // cout<<*result<<endl;
-      if(q->max_read_id_ < txn_unique_id){
-        q->max_read_id_ = txn_unique_id;
-      }
-      return true;
+    *result = q->value_;
+    if(q->max_read_id_ < txn_unique_id){
+      q->max_read_id_ = txn_unique_id;
     }
+    return true;
   } 
   return false;
 }
@@ -92,11 +87,10 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
   // call Lock(key) before you call this method and call Unlock(key) afterward.
 
   if (mvcc_data_.count(key)) {
-    deque<Version*>* data = mvcc_data_[key];
-    // int max_version = -1;
     Version* vk = nullptr;
 
-    for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
+    for (deque<Version*>::iterator it = mvcc_data_[key]->begin();
+          it != mvcc_data_[key]->end(); ++it) {
       Version* v = *it;
       if(v->version_id_ <= txn_unique_id){
         if(vk == nullptr || vk->version_id_ < v->version_id_){
@@ -105,10 +99,6 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
       }
     }
 
-    // MVCC Write rule
-    // if RTS(Qk) > Ti, abort
-    // else if WTS(Qk) = Ti, rewrite
-    // else, make new version
     return (vk != nullptr && vk->max_read_id_ <= txn_unique_id);
   } else {
     return false;
@@ -126,29 +116,24 @@ void MVCCStorage::Write(Key key, Value value, int txn_unique_id) {
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
 
-  if(mvcc_data_.count(key) == 0){
-    mvcc_data_[key] = new deque<Version*>();
-    // Version *vn = new Version {value, txn_unique_id, txn_unique_id};
-    // mvcc_data_[key]->push_back(vn);
-    // int l = mvcc_data_[key]->at(0)->value_;
-    // cout<<l<<endl;
+  if(mvcc_data_.count(key)){
+    Version* vk = nullptr;
+
+    for (deque<Version*>::iterator it = mvcc_data_[key]->begin(); 
+          it != mvcc_data_[key]->end(); ++it) {
+      Version* v = *it;
+      if(v->version_id_ <= txn_unique_id &&
+          (vk == nullptr || vk->version_id_ < v->version_id_)){
+        vk = v;
+      }
+    }
+
+    if(vk->version_id_ == txn_unique_id){
+      vk->value_ = value;
+      return;
+    }
   } else {
-      deque<Version*>* data = mvcc_data_[key];
-      Version* vk = nullptr;
-
-      for (deque<Version*>::iterator it = data->begin(); it != data->end(); ++it) {
-        Version* v = *it;
-        if(v->version_id_ <= txn_unique_id){
-          if(vk == nullptr || vk->version_id_ < v->version_id_){
-            vk = v;
-          }
-        }
-      }
-
-      if(vk->version_id_ == txn_unique_id){
-        vk->value_ = value;
-        return;
-      }
+    mvcc_data_[key] = new deque<Version*>();
   }
 
   Version *vn = new Version {value, txn_unique_id, txn_unique_id};
