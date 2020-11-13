@@ -79,30 +79,30 @@ Then here is testing result based on our second device (RAM: 8gb, CPU Core: 6, T
 1. Exclusive-only Simple Locking
     First test
 
-    ![Lock-3](docs/ExclusiveLock-3.jpg)
+    ![Lock-3](docs/ExclusiveLock-3-2.jpg)
 
     Second test
 
-    ![Lock-4](docs/ExclusiveLock-4.png)
+    ![Lock-4](docs/ExclusiveLock-4-2.png)
 2. Serial Optimistic Concurrency Control (OCC)
    
     First test
 
-    ![occ-3](docs/OCC-3.png)
+    ![occ-3](docs/OCC-3-2.png)
 
     Second test
 
-    ![occ-4](docs/OCC-4.png)
+    ![occ-4](docs/OCC-4-2.png)
     
 3. Multiversion Timestamp Ordering Concurrency Control (MVCC)
    
    First test
 
-   ![mvcc-3](docs/MVCC-3.png)
+   ![mvcc-3](docs/MVCC-3-2.png)
 
    Second test
 
-   ![mvcc-4](docs/MVCC-4.png)
+   ![mvcc-4](docs/MVCC-4-2.png)
 
 ## Analysis
 
